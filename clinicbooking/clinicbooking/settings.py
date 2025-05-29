@@ -9,9 +9,11 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import os
 from pathlib import Path
-
+from dotenv import load_dotenv
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(dotenv_path=env_path)
 from django.conf.global_settings import AUTH_USER_MODEL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -22,9 +24,13 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Sử dụng SMT
 EMAIL_HOST = 'smtp.gmail.com'  # SMTP server của Gmail
 EMAIL_PORT = 587  # Cổng SMTP (587 cho TLS)
 EMAIL_USE_TLS = True  # Bật TLS (Transport Layer Security)
-EMAIL_HOST_USER = 'haopc1404@gmail.com'  # Email của bạn
-EMAIL_HOST_PASSWORD = 'qszggqyowrifachp'  # Mật khẩu của email (hoặc App password nếu dùng 2FA)
-DEFAULT_FROM_EMAIL = 'haopc1404@gmail.com'  # Email gửi đi mặc định
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')  # Email của bạn
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # Mật khẩu của email (hoặc App password nếu dùng 2FA)
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')  # Email gửi đi mặc định
+
+# Cấu hình celery giúp gửi email và push notification theo lich hẹn
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -35,7 +41,7 @@ SECRET_KEY = 'django-insecure-bt%qm0ce=2wm6zwm+^!r+dd=ra-(*9)2o7+h*5ee-*ssw0h^4s
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['10.17.66.120', '10.17.65.121', '*']
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -52,6 +58,7 @@ INSTALLED_APPS = [
     'oauth2_provider',
     'ckeditor',
     'ckeditor_uploader',
+    'django_filters',
 ]
 
 OAUTH2_PROVIDER = {'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSONOAuthLibCore'}
@@ -59,8 +66,13 @@ OAUTH2_PROVIDER = {'OAUTH2_BACKEND_CLASS': 'oauth2_provider.oauth2_backends.JSON
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
-    )
+        ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
 }
+
+USE_TZ = True  # vẫn bật timezone
+TIME_ZONE = 'Asia/Ho_Chi_Minh'
+
 
 CKEDITOR_UPLOAD_PATH = "ckeditors/lessons/"
 
@@ -70,9 +82,9 @@ from cloudinary.utils import cloudinary_url
 
 # Configuration
 cloudinary.config(
-    cloud_name="tthau2004",
-    api_key="372274126191375",
-    api_secret="Abk-RA6C6MUKDV34nOuFDhpLFjs",  # Click 'View API Keys' above to copy your API secret
+    cloud_name=os.getenv('cloud_name'),
+    api_key=os.getenv('api_key'),
+    api_secret=os.getenv('api_secret'),  # Click 'View API Keys' above to copy your API secret
     secure=True
 )
 
@@ -97,7 +109,7 @@ ROOT_URLCONF = 'clinicbooking.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR /'clinic'/ 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

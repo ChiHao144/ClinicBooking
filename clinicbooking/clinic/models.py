@@ -8,7 +8,7 @@ from django.contrib.auth.models import AbstractUser
 from cloudinary.models import CloudinaryField
 
 
-# Create your models here.
+# ---------- BaseModel ---------- #
 class BaseModel(models.Model):
     active = models.BooleanField(default=True)
     created_date = models.DateTimeField(auto_now_add=True)
@@ -18,52 +18,31 @@ class BaseModel(models.Model):
         abstract = True
 
 
-# Loại user dạng Enum
-class UserType(models.TextChoices):
-    ADMIN = 'Ad', 'Admin'
-    DOCTOR = 'Dr', 'Doctor'
-    PATIENT = 'Pa', 'Patient'
-
-
-# Giới tính dang enum
-class Gender(models.TextChoices):
-    MALE = 'Male', 'Nam'
-    FEMALE = 'Female', 'Nữ'
-
-
+# ---------- User ---------- #
 class User(AbstractUser):
+    """
+    Model User: Lưu trữ thông tin tài khoản người dùng như:
+     username, password, fullname, email và role
+    """
+    ROLE_CHOICES = (
+        ('admin', 'Quản trị viên'),
+        ('patient', 'Bệnh nhân'),
+        ('doctor', 'Bác sĩ'),
+    )
+    number_phone = models.CharField(max_length=11, null=False, unique=True)
     avatar = CloudinaryField(null=False)
-    number_phone = models.CharField(max_length=10, unique=True, blank=False, null=False)
-    gender = models.CharField(max_length=10, choices=Gender, default=Gender.MALE)
-    created_date = models.DateTimeField(auto_now_add=True)
-    updated_date = models.DateTimeField(auto_now=True)
-    user_type = models.CharField(max_length=10, choices=UserType, default=UserType.PATIENT)
-
-    # Ghi đè lại các field của AbstractUser để bắt buộc nhập
-    first_name = models.CharField(max_length=150, blank=False)
-    last_name = models.CharField(max_length=150, blank=False)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    full_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True, blank=False, null=False)
-
-    class Meta:
-        abstract: True
 
     def __str__(self):
         return self.username
 
 
-class Patient(User):
-    user_type = UserType.PATIENT
-    day_of_birth = models.DateField()
-    address = models.CharField(max_length=255, null=True)
-
-    class Meta:
-        verbose_name = "Patient"
-
-
 class Hospital(BaseModel):
     name = models.CharField(max_length=255)
     address = models.TextField(max_length=200)
-    image = CloudinaryField(null=False)
+    logo = CloudinaryField(null=False)
     description = RichTextField()
     phone = models.CharField(max_length=10)
 
@@ -79,25 +58,56 @@ class Specialization(BaseModel):
         return self.name
 
 
-class Doctor(User):
+class Doctor(BaseModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     license_number = models.CharField(max_length=20, unique=True, null=False)
     license_image = CloudinaryField(null=False)
     biography = models.CharField(max_length=255, null=True)
-    is_verified = models.BooleanField(default=False)
     hospital = models.ForeignKey(Hospital, on_delete=models.PROTECT)
     specialization = models.ForeignKey(Specialization, on_delete=models.PROTECT)
-    user_type = UserType.DOCTOR
+    consultation_fee = models.DecimalField(max_digits=10, decimal_places=2, default=100000,
+                                           help_text="Giá khám bệnh (VND)"
+                                           )
 
-    class Meta:
-        verbose_name = "Doctor"
+    def __str__(self):
+        return (f"{self.user.full_name} - {self.hospital.name} - {self.specialization.name}")
 
 
 class HealthRecord(BaseModel):
-    medical_history = models.CharField(max_length=255, null=True)
-    patient = models.OneToOneField(Patient, on_delete=models.PROTECT)
+    OCCUPATION_CHOICES = [
+        ('doctor', 'Bác sĩ'),
+        ('nurse', 'Y tá'),
+        ('teacher', 'Giáo viên'),
+        ('engineer', 'Kỹ sư'),
+        ('student', 'Học sinh/Sinh viên'),
+        ('worker', 'Công nhân'),
+        ('freelancer', 'Làm tự do'),
+        ('office_staff', 'Nhân viên văn phòng'),
+        ('business', 'Kinh doanh'),
+        ('driver', 'Tài xế'),
+        ('farmer', 'Nông dân'),
+        ('police', 'Công an'),
+        ('other', 'Khác'),
+    ]
+    GENDER_CHOICES = [
+        ('male', 'Nam'),
+        ('female', 'Nữ')
+    ]
+
+    full_name = models.CharField(max_length=100, null=False)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default='male')
+    number_phone = models.CharField(max_length=10, blank=False, null=False)
+    email = models.EmailField(blank=False, null=False)
+    CCCD = models.CharField(max_length=12, unique=True, null=False)
+    BHYT = models.CharField(max_length=10, null=False, unique=True)
+    day_of_birth = models.DateField()
+    occupation = models.CharField(max_length=50, choices=OCCUPATION_CHOICES, null=False)
+    address = models.CharField(max_length=255, null=False)
+    medical_history = models.TextField(null=True)
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='health_records')
 
     def __str__(self):
-        return self.patient.username
+        return (f'{self.full_name} - {self.user}')
 
 
 class Notification(BaseModel):
@@ -114,7 +124,7 @@ class Notification(BaseModel):
     send_at = models.DateTimeField(null=False)
     type = models.CharField(max_length=20, choices=NotifyType, default=NotifyType.NHAC_NHO)
     form = models.CharField(max_length=20, choices=NotifyForm, default=NotifyForm.EMAIL)
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
 class TestResult(BaseModel):
@@ -124,7 +134,7 @@ class TestResult(BaseModel):
     health_record = models.ForeignKey(HealthRecord, on_delete=models.PROTECT, null=False)
 
     def __str__(self):
-        return self.test_name
+        return (f'{self.health_record.full_name} - {self.test_name}')
 
 
 class Message(BaseModel):
@@ -143,55 +153,61 @@ class Review(BaseModel):
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField(blank=True)
     reply = models.TextField(blank=True, null=True)
-    patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, related_name='reviews', null=True)
-    doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, related_name='reviews_received', null=True)
+    patient = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='reviews', null=True)
+    doctor = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='reviews_received', null=True)
 
     def __str__(self):
-        return (f"{self.rating - self.comment}")
+        return f"Review by {self.patient} for {self.doctor}: {self.rating}⭐ - {self.comment} - {self.reply if self.reply else 'None'}"
 
 
 class Schedule(BaseModel):
-    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
-    is_available = models.BooleanField(default=True)
     capacity = models.IntegerField(default=1)
+    sum_booking = models.IntegerField(default=0)
 
+    def save(self, *args, **kwargs):
+        """
+        Cập nhật trạng thái active của schedule (Tức là lịch đó còn khả dụng/trống không)
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        self.active = self.sum_booking < self.capacity
+        super().save(*args, **kwargs)
 
     class Meta:
         # Tránh bác sĩ bị trùng ngày và giờ bắt đầu
         unique_together = ('doctor', 'date', 'start_time')
 
     def __str__(self):
-        return (f"{self.doctor.username} - ngày {self.date.strftime('%d/%m/%Y')}: "
+        return (f"ID {self.pk} - {self.doctor.username} - ngày {self.date.strftime('%d/%m/%Y')}: "
                 f"{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}")
 
 
 class Appointment(BaseModel):
-    class Status(models.TextChoices):
-        PENDING = 'pending', 'Đang chờ xác nhận'
-        CONFIRMED = 'confirmed', 'Đã xác nhận'
-        COMPLETED = 'completed', 'Đã hoàn thành'
-        CANCELED = 'canceled', 'Đã hủy'
+    STATUS_CHOICES = [
+        ('unpaid', 'Chưa thanh toán'),
+        ('paid', 'Đã thanh toán'),
+        ('completed', 'Đã khám'),
+        ('cancelled', 'Đã hủy'),
+    ]
 
-    patient = models.ForeignKey(Patient, on_delete=models.PROTECT)
-    schedule = models.OneToOneField(Schedule, on_delete=models.CASCADE)
+    healthrecord = models.ForeignKey(HealthRecord, on_delete=models.PROTECT)
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
     disease_type = models.CharField(max_length=255, null=False)
     symptoms = models.TextField(blank=True)
-    status = models.CharField(max_length=10, choices=Status, default=Status.PENDING)
-    booked_at = models.DateTimeField(auto_now_add=True)
-    cancel_reason = models.TextField(blank=True, null=True)
-    rescheduled_from = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid')
+    cancel = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-id']
+        unique_together = ('healthrecord', 'schedule')
 
     def __str__(self):
-        return f"{self.patient} - {self.schedule}"
-
-    @property
-    def can_cancel_or_reschedule(self):
-        appointment_datetime = datetime.combine(self.schedule.date, self.schedule.start_time)
-        appointment_datetime = timezone.make_aware(appointment_datetime)  # make it timezone-aware
-        return appointment_datetime - timezone.now() >= timedelta(hours=24)
+        return f"{self.healthrecord} - {self.schedule}"
 
 
 class Payment(BaseModel):
@@ -209,3 +225,18 @@ class Payment(BaseModel):
     status = models.CharField(max_length=20, choices=PaymentStatus, default=PaymentStatus.PENDING)
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
     appointment = models.OneToOneField(Appointment, on_delete=models.PROTECT, related_name='payment')
+
+    def __str__(self):
+        return (f'Payment_id {self.pk} - {self.appointment} - {self.status}')
+
+
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self):
+        return timezone.now() > self.created_at + timedelta(minutes=10)
+
+    def __str__(self):
+        return(f"User: {self.user} - OTP Code:{self.otp_code}")

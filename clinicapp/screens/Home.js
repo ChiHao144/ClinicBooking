@@ -58,9 +58,8 @@ const Home = ({ navigation }) => {
   const [hospital, setHospital] = useState([]);
   const [specialization, setSpecialization] = useState([]);
 
-  const loadSpecialization=async()=>{
+  const loadSpecialization = async () => {
     let res = await Apis.get(endpoints['specializations']);
-    console.log(res.data);
     setSpecialization(res.data);
   };
 
@@ -77,23 +76,27 @@ const Home = ({ navigation }) => {
     loadingHospital();
   }, []);
 
-  useEffect(()=>{
+  useEffect(() => {
     loadSpecialization();
-  },[])
+  }, [])
 
-  const renderHospitalItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.hospitalItem}
-      onPress={() => navigation.navigate('hospitaldetails', { hospitalId: item.id })}
-    >
-      <Image source={{ uri: item.image }} style={styles.hospitalImage} />
-      <View style={styles.hospitalInfo}>
-        <Text style={styles.hospitalName}>{item.name}</Text>
-        <Text style={styles.hospitalDesc}>{`Địa chỉ: ${item.address}`}</Text>
-        <Text style={styles.hospitalPhone}>{`Hotline: ${item.phone}`}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderHospitalItem = ({ item }) => {
+    console.log("Image URL:", item.logo);
+
+    return (
+      <TouchableOpacity
+        style={styles.hospitalItem}
+        onPress={() => navigation.navigate('hospitaldetails', { hospitalId: item.id })}
+      >
+        <Image source={{ uri: item.logo }} style={styles.hospitalImage} />
+        <View style={styles.hospitalInfo}>
+          <Text style={styles.hospitalName}>{item.name}</Text>
+          <Text style={styles.hospitalDesc}>{`Địa chỉ: ${item.address}`}</Text>
+          <Text style={styles.hospitalPhone}>{`Hotline: ${item.phone}`}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -102,7 +105,7 @@ const Home = ({ navigation }) => {
       <Button
         mode="contained"
         style={styles.actionButton}
-        onPress={() => navigation.navigate('doctorbooking')}
+        onPress={() => navigation.navigate('doctorList')}
       >
         Đặt khám bác sĩ
       </Button>
@@ -119,11 +122,11 @@ const Home = ({ navigation }) => {
       <Button
         mode="outlined"
         style={styles.bottomButton}
-        onPress={() => navigation.navigate('')}
+        onPress={() => navigation.navigate('scheduleBooking')}
       >
         Đặt lịch khám bệnh
       </Button>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
