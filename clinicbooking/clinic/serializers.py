@@ -135,7 +135,7 @@ class DoctorSerializer(ModelSerializer):
         model = Doctor
         fields = ['id', 'user', 'doctor', 'avatar', 'biography', 'license_number', 'license_image', 'active',
                   'hospital_id', 'hospital_name',
-                  'specialization', 'specialization_name', 'consultation_fee', 'total_reviews', 'average_rating']
+                  'specialization', 'specialization_name', 'consultation_fee', 'total_reviews', 'average_rating', 'is_verified']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -225,7 +225,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         schedule = data.get('schedule_id')
         healthrecord = data.get('healthrecord_id')
 
-        if Appointment.objects.filter(healthrecord=healthrecord, schedule=schedule).exists():
+        if Appointment.objects.filter(healthrecord=healthrecord, schedule=schedule, cancel=False).exists():
             raise serializers.ValidationError("Bạn đã có lịch khám này rồi!")
 
         return data
@@ -259,9 +259,19 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(ModelSerializer):
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    avatar_patient = serializers.CharField(source='patient.avatar.url', read_only=True)
+    doctor_name = serializers.CharField(source='doctor.full_name', read_only=True)
+    doctor = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+
     class Meta:
         model = Review
-        fields = '__all__'
+        fields = ['id', 'rating', 'comment', 'reply', 'patient_name', 'avatar_patient', 'doctor', 'doctor_name']
+
+    def create(self, validated_data):
+        request = self.context['request']
+        validated_data['patient'] = request.user
+        return super().create(validated_data)
 
 
 class PaymentSerializer(ModelSerializer):

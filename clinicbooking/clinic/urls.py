@@ -1,7 +1,8 @@
 from django.urls import path, include
 from . import views
 from rest_framework.routers import BaseRouter, DefaultRouter
-from .views import PasswordResetSendOTPViewSet, PasswordResetConfirmOTPViewSet, DoctorReportViewSet, AdminReportViewSet
+from .views import PasswordResetSendOTPViewSet, PasswordResetConfirmOTPViewSet, DoctorReportViewSet, AdminReportViewSet, \
+    UploadLicenseViewSet, PendingDoctorsViewSet, ApproveDoctorView
 
 # from .views import AdminReportViewSet, DoctorReportView
 
@@ -24,11 +25,17 @@ router.register('payments', views.PaymentViewSet, basename='payment')
 # # router.register('admin-report', views.AdminReportViewSet, basename='adminreport')
 router.register('notifications', views.NotificationViewSet, basename='notification')
 
-
 urlpatterns = [
     path('', include(router.urls)),
     path('api/password-reset/otp/', PasswordResetSendOTPViewSet.as_view(), name='send_otp'),
     path('api/password-reset/otp/confirm/', PasswordResetConfirmOTPViewSet.as_view(), name='confirm_otp'),
     path('reportsdoctor/', DoctorReportViewSet.as_view(), name='doctorreport'),
     path('reportsadmin/', AdminReportViewSet.as_view(), name='adminreport'),
+    # Tạo url cho upload license, duyệt bác sĩ
+    path('doctor/upload-license/', UploadLicenseViewSet.as_view(), name='upload_license'),
+    path('admin/doctors/pending/', PendingDoctorsViewSet.as_view(), name='pending_doctors'),
+    path('admin/doctors/<int:doctor_id>/approve/', ApproveDoctorView.as_view(), name='approve_doctor'),
+    # Tạo url cho create-payment-url
+    path('create-payment-url/', views.create_payment_url, name='create_payment_url'),
+    path('api/vnpay_return/', views.vnpay_return, name='vnpay_return'),
 ]
